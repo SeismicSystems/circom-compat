@@ -1,3 +1,10 @@
+/// The upgrade of this module from wasmer 2 to wasmer 4
+/// heavily relied on (read: almost a direct copy/paste)
+/// the work of the `circom-scotia` library:
+///     https://github.com/lurk-lab/circom-scotia
+///
+/// We simply preserved the original tests and BigInt types, but
+/// used all of their logic for handling the wasmer `Store`
 mod witness_calculator;
 pub use witness_calculator::WitnessCalculator;
 
