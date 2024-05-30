@@ -249,20 +249,22 @@ mod tests {
     use std::str::FromStr;
     use wasmer::{MemoryType, Store};
 
-    fn new() -> SafeMemory {
-        SafeMemory::new(
-            Memory::new(&mut Store::default(), MemoryType::new(1, None, false)).unwrap(),
+    fn new() -> (Store, SafeMemory) {
+        let mut store = Store::default();
+        let safe_memory = SafeMemory::new(
+            Memory::new(&mut store, MemoryType::new(1, None, false)).unwrap(),
             2,
             BigInt::from_str(
                 "21888242871839275222246405745257275088548364400416034343698204186575808495617",
             )
             .unwrap(),
-        )
+        );
+        (store, safe_memory)
     }
 
     #[test]
     fn i32_bounds() {
-        let mem = new();
+        let (_store, mem) = new();
         let i32_max = i32::MAX as i64 + 1;
         assert_eq!(mem.short_min.to_i64().unwrap(), -i32_max);
         assert_eq!(mem.short_max.to_i64().unwrap(), i32_max);
@@ -270,15 +272,14 @@ mod tests {
 
     #[test]
     fn read_write_32() {
-        let mut mem = new();
-        let mut store = Store::default();
+        let (mut store, mut mem) = new();
         let num = u32::MAX;
 
-        let inp = mem.read_u32(&store, 0);
+        let inp = mem.read_u32(&mut store, 0);
         assert_eq!(inp, 0);
 
         mem.write_u32(&mut store, 0, num);
-        let inp = mem.read_u32(&store, 0);
+        let inp = mem.read_u32(&mut store, 0);
         assert_eq!(inp, num);
     }
 
@@ -305,10 +306,9 @@ mod tests {
     }
 
     fn read_write_fr(num: BigInt) {
-        let mut mem = new();
-        let mut store = Store::default();
+        let (mut store, mut mem) = new();
         mem.write_fr(&mut store, 0, &num).unwrap();
-        let res = mem.read_fr(&store, 0).unwrap();
+        let res = mem.read_fr(&mut store, 0).unwrap();
         assert_eq!(res, num);
     }
 }
