@@ -1,5 +1,9 @@
 use ark_ec::pairing::Pairing;
-use std::{fs::File, path::Path};
+use std::{
+    fs::File,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 use super::{CircomCircuit, R1CS};
 
@@ -16,16 +20,16 @@ pub struct CircomBuilder<E: Pairing> {
 }
 
 // Add utils for creating this from files / directly from bytes
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CircomConfig<E: Pairing> {
     pub r1cs: R1CS<E>,
-    pub wtns: WitnessCalculator,
+    pub wtns: Arc<Mutex<WitnessCalculator>>,
     pub sanity_check: bool,
 }
 
 impl<E: Pairing> CircomConfig<E> {
     pub fn new(wtns: impl AsRef<Path>, r1cs: impl AsRef<Path>) -> Result<Self> {
-        let wtns = WitnessCalculator::new(wtns).unwrap();
+        let wtns = Arc::new(Mutex::new(WitnessCalculator::new(wtns).unwrap()));
         let reader = File::open(r1cs)?;
         let r1cs = R1CSFile::new(reader)?.into();
         Ok(Self {
@@ -68,13 +72,15 @@ impl<E: Pairing> CircomBuilder<E> {
 
     /// Creates the circuit populated with the witness corresponding to the previously
     /// provided inputs
-    pub fn build(mut self) -> Result<CircomCircuit<E>> {
+    pub fn build(self) -> Result<CircomCircuit<E>> {
         let mut circom = self.setup();
 
         // calculate the witness
         let witness = self
             .cfg
             .wtns
+            .lock()
+            .unwrap()
             .calculate_witness_element::<E, _>(self.inputs, self.cfg.sanity_check)?;
         circom.witness = Some(witness);
 
